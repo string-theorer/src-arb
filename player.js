@@ -1,6 +1,4 @@
-// ========================
-// Global Audio Engine
-// ========================
+// Single Audio Engine for Both Players
 let audioEngine = new Audio();
 let isPlaying = false;
 let isLooping = false;
@@ -8,9 +6,7 @@ let currentBase64 = null;
 let currentTrack = null;
 let currentPlayer = null;
 
-// ========================
-// Device Selection
-// ========================
+// Device Selection Functions
 function selectDevice(deviceType) {
     localStorage.setItem('preferredDevice', deviceType);
     const popup = document.getElementById('devicePopup');
@@ -47,9 +43,7 @@ function checkDevicePreference() {
     }
 }
 
-// ========================
-// Player Initialization
-// ========================
+// Initialize Player with Prefix
 function initializePlayer(prefix) {
     const elements = {
         cover: document.getElementById(prefix + 'cover'),
@@ -72,7 +66,9 @@ function initializePlayer(prefix) {
     elements.volume.addEventListener('input', (e) => {
         setVolume(e.target.value);
         updateVolumeSliderFill(e.target.value);
-        if (elements.volumeValue) elements.volumeValue.textContent = e.target.value + '%';
+        if (elements.volumeValue) {
+            elements.volumeValue.textContent = e.target.value + '%';
+        }
     });
 
     audioEngine.addEventListener('loadeddata', updateDuration);
@@ -82,18 +78,18 @@ function initializePlayer(prefix) {
 
     audioEngine.volume = 0.7;
     updateVolumeSliderFill(70);
-    if (elements.volumeValue) elements.volumeValue.textContent = '70%';
+    if (elements.volumeValue) {
+        elements.volumeValue.textContent = '70%';
+    }
 
     window.playerElements = elements;
 }
 
-// ========================
-// Slider Fill
-// ========================
+// Slider Fill Functions
 function updateProgressSliderFill(progress) {
     if (!window.playerElements) return;
     const fillColor = '#1a1a1a';
-    const trackColor = 'rgba(0,0,0,0.1)';
+    const trackColor = 'rgba(0, 0, 0, 0.1)';
     window.playerElements.progress.style.background =
         `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${progress}%, ${trackColor} ${progress}%, ${trackColor} 100%)`;
 }
@@ -101,23 +97,24 @@ function updateProgressSliderFill(progress) {
 function updateVolumeSliderFill(volume) {
     if (!window.playerElements) return;
     const fillColor = '#1a1a1a';
-    const trackColor = 'rgba(0,0,0,0.1)';
+    const trackColor = 'rgba(0, 0, 0, 0.1)';
     window.playerElements.volume.style.background =
         `linear-gradient(to right, ${fillColor} 0%, ${fillColor} ${volume}%, ${trackColor} ${volume}%, ${trackColor} 100%)`;
 }
 
-// ========================
-// Player Controls
-// ========================
+// Player Functions
 function togglePlay() {
-    if (!audioEngine.src) return console.warn('No audio loaded');
+    if (!audioEngine.src) {
+        console.warn('No audio source loaded');
+        return;
+    }
     if (!isPlaying) {
         audioEngine.play().then(() => {
             isPlaying = true;
             window.playerElements.playPause.innerHTML = '<i class="fa fa-pause"></i>';
             window.playerElements.cover.classList.add('playing');
             animateVisualizer();
-        }).catch(e => console.error(e));
+        }).catch(e => console.error('Play error:', e));
     } else {
         audioEngine.pause();
         isPlaying = false;
@@ -133,22 +130,39 @@ function toggleLoop() {
 }
 
 function downloadAudio() {
-    if (!currentBase64) return alert('No audio loaded');
-    const base64Data = currentBase64.split(',')[1];
-    const byteArray = new Uint8Array(atob(base64Data).split('').map(c => c.charCodeAt(0)));
-    const blob = new Blob([byteArray], { type: 'audio/mp3' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = currentTrack?.title ? `${currentTrack.title}.mp3` : 'audio.mp3';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    if (!currentBase64) {
+        alert('No audio loaded to download');
+        return;
+    }
+    try {
+        const base64Data = currentBase64.split(',')[1];
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'audio/mp3' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const filename = currentTrack?.title ? `${currentTrack.title}.mp3` : 'audio.mp3';
+        link.href = url;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error downloading audio:', error);
+        alert('Error downloading audio file');
+    }
 }
 
 function seekTo(percent) {
-    if (audioEngine.duration) audioEngine.currentTime = (percent / 100) * audioEngine.duration;
+    if (audioEngine.duration) {
+        audioEngine.currentTime = (percent / 100) * audioEngine.duration;
+    }
 }
 
 function setVolume(value) {
@@ -171,7 +185,7 @@ function updateDuration() {
 function formatTime(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2,'0')}`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 function handleTrackEnd() {
@@ -182,24 +196,27 @@ function handleTrackEnd() {
     }
 }
 
-function handleError() {
+function handleError(error) {
+    console.error('Audio player error:', error);
     if (window.playerElements) {
         window.playerElements.title.textContent = 'Error loading audio';
-        window.playerElements.artist.textContent = 'Please check the file';
+        window.playerElements.artist.textContent = 'Please check the audio format';
     }
 }
 
 function animateVisualizer() {
-    const bars = document.querySelectorAll(currentPlayer === 'desktop' ? '.desktop-bar' : '.lofi-bar');
-    if (isPlaying && bars.length) {
-        bars.forEach(bar => bar.style.height = `${Math.random()*16+4}px`);
+    const selector = currentPlayer === 'desktop' ? '.desktop-bar' : '.lofi-bar';
+    const bars = document.querySelectorAll(selector);
+    if (isPlaying && bars.length > 0) {
+        bars.forEach(bar => {
+            const height = Math.random() * 16 + 4;
+            bar.style.height = `${height}px`;
+        });
         setTimeout(animateVisualizer, 200);
     }
 }
 
-// ========================
-// Track Loading
-// ========================
+// Load Track Functions
 function loadTrack(track) {
     currentTrack = track;
     if (window.playerElements) {
@@ -207,37 +224,59 @@ function loadTrack(track) {
         window.playerElements.title.textContent = track.title || 'Unknown Track';
         window.playerElements.artist.textContent = track.artist || 'Unknown Artist';
     }
-    if (track.dataURL) loadDataURL(track.dataURL);
-    else if (track.base64) loadBase64Audio(track.base64);
-    else if (track.src) audioEngine.src = track.src;
+    if (track.dataURL) {
+        loadDataURL(track.dataURL);
+    } else if (track.base64) {
+        loadBase64Audio(track.base64, track.format || 'mp3');
+    } else if (track.src) {
+        audioEngine.src = track.src;
+    }
 }
 
 function loadDataURL(dataURL) {
-    currentBase64 = dataURL;
-    audioEngine.src = dataURL;
+    try {
+        if (!dataURL.startsWith('data:audio/')) throw new Error('Invalid data URL format');
+        currentBase64 = dataURL;
+        audioEngine.src = dataURL;
+        console.log('Audio loaded successfully');
+    } catch (error) {
+        console.error('Error loading audio:', error);
+    }
 }
 
-function loadBase64Audio(base64Data, format='mp3') {
-    const dataURL = `data:audio/${format};base64,${base64Data.includes(',')?base64Data.split(',')[1]:base64Data}`;
-    loadDataURL(dataURL);
+function loadBase64Audio(base64Data, format = 'mp3') {
+    try {
+        let audioData = base64Data;
+        if (audioData.includes(',')) {
+            audioData = audioData.split(',')[1];
+        }
+        const dataURL = `data:audio/${format};base64,${audioData}`;
+        loadDataURL(dataURL);
+    } catch (error) {
+        console.error('Error loading base64 audio:', error);
+    }
 }
 
+// Load Base64 from GitHub
 async function loadTrackFromGithub(url, trackInfo) {
     try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Fetch failed');
-        const base64Data = await res.text();
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch track');
+        const base64Data = await response.text();
         const dataURL = `data:audio/mp3;base64,${base64Data.trim()}`;
         currentBase64 = dataURL;
         audioEngine.src = dataURL;
         currentTrack = trackInfo;
+
         if (window.playerElements) {
             window.playerElements.cover.src = trackInfo.cover || '';
             window.playerElements.title.textContent = trackInfo.title || 'Unknown Title';
             window.playerElements.artist.textContent = trackInfo.artist || 'Unknown Artist';
         }
-    } catch(err) {
-        console.error(err);
+
+        console.log("Track loaded successfully from GitHub:", trackInfo.title);
+    } catch (err) {
+        console.error("Error loading track:", err);
         if (window.playerElements) {
             window.playerElements.title.textContent = 'Error loading track';
             window.playerElements.artist.textContent = 'Try again';
@@ -245,15 +284,23 @@ async function loadTrackFromGithub(url, trackInfo) {
     }
 }
 
-// ========================
-// Global Shortcut
-// ========================
+// Global Functions (for backward compatibility)
 function loadDataURLGlobal(title, artist, cover, dataURL) {
     loadTrack({ title, artist, cover, dataURL });
 }
-function loadAudio(dataURL){ loadDataURL(dataURL); }
 
-// ========================
-// Init
-// ========================
-document.addEventListener('DOMContentLoaded', checkDevicePreference);
+function loadAudio(dataURL) { 
+    loadDataURL(dataURL); 
+}
+
+// Initialize Player on Load
+function initializeMusicPlayer() {
+    checkDevicePreference();
+}
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeMusicPlayer);
+} else {
+    initializeMusicPlayer();
+}
