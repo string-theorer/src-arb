@@ -1,4 +1,3 @@
-<style>
 /* Device Selection Popup */
 .device-popup {
     position: fixed;
@@ -641,7 +640,6 @@
         gap: 16px;
     }
     
-    /* Maintain desktop-style bars on small screens */
     .lofi-progress, .lofi-volume {
         gap: 12px;
     }
@@ -674,7 +672,6 @@
         font-size: 16px;
     }
     
-    /* Keep desktop-style bars even on very small screens */
     .lofi-slider, .lofi-volume-slider {
         height: 6px;
     }
@@ -685,4 +682,3 @@
         border: 2px solid #ffffff;
     }
 }
-</style>
